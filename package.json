@@ -14,9 +14,6 @@
     "encoding"
   ],
   "main": "lib/index.js",
-  "files": [
-    "index.js"
-  ],
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
