@@ -1,7 +1,7 @@
 'use strict'
 let tape = require('tape')
 let fixtures = require('./fixtures/bech32')
-let bech32 = require('../src')
+let bech32 = require('../src/bech32')
 
 fixtures.bech32.valid.forEach((f) => {
   tape(`fromWords/toWords ${f.hex}`, (t) => {
