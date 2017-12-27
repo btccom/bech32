@@ -1,6 +1,10 @@
 'use strict'
+let BigInteger = require('bigi')
 let ALPHABET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
+
 // pre-compute lookup table
+let SEPARATOR = ':'
+let CSLEN = 8
 let ALPHABET_MAP = {}
 for (let z = 0; z < ALPHABET.length; z++) {
   let x = ALPHABET.charAt(z)
@@ -10,28 +14,42 @@ for (let z = 0; z < ALPHABET.length; z++) {
 }
 
 function polymodStep (pre) {
-  let b = pre >> 25
-  return ((pre & 0x1FFFFFF) << 5) ^
-    (-((b >> 0) & 1) & 0x3b6a57b2) ^
-    (-((b >> 1) & 1) & 0x26508e6d) ^
-    (-((b >> 2) & 1) & 0x1ea119fa) ^
-    (-((b >> 3) & 1) & 0x3d4233dd) ^
-    (-((b >> 4) & 1) & 0x2a1462b3)
+  // 29 bits left
+  let b = pre.shiftRight(35)
+  let mask = BigInteger.fromHex('07ffffffff')
+
+  let v = pre.and(mask).shiftLeft(new BigInteger('5'))
+
+  if (b.and(new BigInteger('1')).intValue() > 0) {
+    v = v.xor(BigInteger.fromHex('98f2bc8e61'))
+  }
+  if (b.and(new BigInteger('2')).intValue()) {
+    v = v.xor(BigInteger.fromHex('79b76d99e2'))
+  }
+  if (b.and(new BigInteger('4')).intValue()) {
+    v = v.xor(BigInteger.fromHex('f33e5fb3c4'))
+  }
+  if (b.and(new BigInteger('8')).intValue()) {
+    v = v.xor(BigInteger.fromHex('ae2eabe2a8'))
+  }
+  if (b.and(new BigInteger('16')).intValue()) {
+    v = v.xor(BigInteger.fromHex('1e4f43e470'))
+  }
+
+  return v
 }
+
 function prefixChk (prefix) {
-  let chk = 1
+  let chk = new BigInteger('1')
   for (let i = 0; i < prefix.length; ++i) {
     let c = prefix.charCodeAt(i)
-    if (c < 33 || c > 126) throw new Error('Invalid prefix (' + prefix + ')')
 
-    chk = polymodStep(chk) ^ (c >> 5)
+    let mixwith = new BigInteger('' + (c & 0x1f))
+    chk = polymodStep(chk).xor(mixwith)
   }
+
   chk = polymodStep(chk)
 
-  for (let i = 0; i < prefix.length; ++i) {
-    let v = prefix.charCodeAt(i)
-    chk = polymodStep(chk) ^ (v & 0x1f)
-  }
   return chk
 }
 
@@ -42,23 +60,24 @@ function encode (prefix, words) {
 
   // determine chk mod
   let chk = prefixChk(prefix)
-  let result = prefix + '1'
+  let result = prefix + SEPARATOR
   for (let i = 0; i < words.length; ++i) {
     let x = words[i]
-    if ((x >> 5) !== 0) throw new Error('Non 5-bit word')
+    if ((x >>> 5) !== 0) throw new Error('Non 5-bit word')
 
-    chk = polymodStep(chk) ^ x
+    chk = polymodStep(chk).xor(new BigInteger('' + x))
     result += ALPHABET.charAt(x)
   }
 
-  for (let i = 0; i < 6; ++i) {
+  for (let i = 0; i < CSLEN; ++i) {
     chk = polymodStep(chk)
   }
-  chk ^= 1
+  chk = chk.xor(new BigInteger('1'))
 
-  for (let i = 0; i < 6; ++i) {
-    let v = (chk >> ((5 - i) * 5)) & 0x1f
-    result += ALPHABET.charAt(v)
+  for (let i = 0; i < CSLEN; ++i) {
+    let pos = 5 * (CSLEN - 1 - i)
+    let v2 = chk.shiftRight(new BigInteger('' + pos)).and(BigInteger.fromHex('1f'))
+    result += ALPHABET.charAt(v2.toString(10))
   }
 
   return result
@@ -74,7 +93,7 @@ function decode (str) {
   if (str !== lowered && str !== uppered) throw new Error('Mixed-case string ' + str)
   str = lowered
 
-  let split = str.lastIndexOf('1')
+  let split = str.lastIndexOf(SEPARATOR)
   if (split === 0) throw new Error('Missing prefix for ' + str)
 
   let prefix = str.slice(0, split)
@@ -87,14 +106,13 @@ function decode (str) {
     let c = wordChars.charAt(i)
     let v = ALPHABET_MAP[c]
     if (v === undefined) throw new Error('Unknown character ' + c)
-    chk = polymodStep(chk) ^ v
-
+    chk = polymodStep(chk).xor(new BigInteger('' + v))
     // not in the checksum?
-    if (i + 6 >= wordChars.length) continue
+    if (i + CSLEN >= wordChars.length) continue
     words.push(v)
   }
 
-  if (chk !== 1) throw new Error('Invalid checksum for ' + str)
+  if (chk.toString(10) !== '1') throw new Error('Invalid checksum for ' + str)
   return { prefix, words }
 }
 
@@ -110,7 +128,7 @@ function convert (data, inBits, outBits, pad) {
 
     while (bits >= outBits) {
       bits -= outBits
-      result.push((value >> bits) & maxV)
+      result.push((value >>> bits) & maxV)
     }
   }
 
