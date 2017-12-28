@@ -13,25 +13,33 @@
     "encode",
     "encoding"
   ],
-  "main": "index.js",
-  "files": [
-    "index.js"
-  ],
+  "main": "lib/index.js",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "bigi": "^1.4.2"
+  },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-latest": "^6.24.1",
+    "grunt": "^1.0.1",
     "nyc": "^10.2.0",
     "standard": "*",
-    "tape": "^4.6.3",
-    "tap-dot": "*"
+    "tap-dot": "*",
+    "tape": "^4.6.3"
   },
   "repository": {
-    "url": "http://github.com/bitcoinjs/bech32",
+    "url": "http://github.com/afk11/bech32",
     "type": "git"
   },
   "scripts": {
     "coverage": "nyc --check-coverage --branches 90 --functions 90 tape test/*.js",
-    "standard": "standard",
-    "test": "tape test/*.js | tap-dot"
+    "standard": "standard lib",
+    "test": "tape test/bech32.js test/base32.js | tap-dot",
+    "build": "babel src -d lib"
+  },
+  "babel": {
+    "presets": [
+      "latest"
+    ]
   }
 }

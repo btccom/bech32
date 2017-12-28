@@ -1,6 +1,5 @@
 'use strict'
 let ALPHABET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
-
 // pre-compute lookup table
 let ALPHABET_MAP = {}
 for (let z = 0; z < ALPHABET.length; z++) {
@@ -19,7 +18,6 @@ function polymodStep (pre) {
     (-((b >> 3) & 1) & 0x3d4233dd) ^
     (-((b >> 4) & 1) & 0x2a1462b3)
 }
-
 function prefixChk (prefix) {
   let chk = 1
   for (let i = 0; i < prefix.length; ++i) {
